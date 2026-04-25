@@ -19,7 +19,7 @@ The base fork serves the original Microsoft Fluent Emoji in 2D (SVG/CBDT/SBIX). 
 ### Via CDN (GitHub Pages)
 
 ```css
-@import url('https://ironexcavater.github.io/fluent-emoji-webfont/dist/LobeHubFluentEmoji3DFont.css');
+@import url('https://ironexcavater.github.io/fluent-emoji-webfont/fonts/LobeHubFluentEmoji3DFont.css');
 
 .emoji-text {
   font-family: 'LobeHub Fluent Emoji 3D Font', sans-serif;
@@ -28,7 +28,7 @@ The base fork serves the original Microsoft Fluent Emoji in 2D (SVG/CBDT/SBIX). 
 
 ### Self-hosted
 
-Copy the `dist/` directory (or use the exported package) into your project:
+Copy the exported `fonts/` directory into your project:
 
 ```html
 <link rel="stylesheet" href="/fonts/LobeHubFluentEmoji3DFont.css" />

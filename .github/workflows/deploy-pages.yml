@@ -14,9 +14,6 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   deploy:
     environment:
@@ -28,11 +25,18 @@ jobs:
         with:
           submodules: false
 
+      - name: Stage site
+        run: |
+          mkdir -p _site/fonts _site/sample/list
+          sed 's|\./dist/LobeHub|\./fonts/LobeHub|g' index.html > _site/index.html
+          cp dist/LobeHubFluentEmoji3DFont* _site/fonts/
+          cp sample/list/favicon.ico _site/sample/list/
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '_site'
 
       - id: deployment
         uses: actions/deploy-pages@v4
