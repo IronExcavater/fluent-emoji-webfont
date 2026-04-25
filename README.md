@@ -153,6 +153,93 @@ Execute `build_ttf.sh` with an `fontType` option.
 
 Then, you can get a `FluentEmoji***.ttf` files after long (about half an hour) time build.
 
+### LobeHub 3D webfont
+If you need editable text, there is also a real webfont build for the LobeHub 3D assets:
+
+```shell
+./build_lobehub_3d_font.sh
+```
+
+Default output is the balanced `128px` profile. Available detail presets are:
+
+- `QUALITY_PROFILE=compact` -> `96px`
+- `QUALITY_PROFILE=balanced` -> `128px`
+- `QUALITY_PROFILE=detail` -> `192px`
+- `QUALITY_PROFILE=max` -> `256px`
+
+You can still override the exact size directly:
+
+```shell
+MAX_DIMENSION=160 ./build_lobehub_3d_font.sh
+```
+
+This writes the LobeHub 3D webfont plus:
+
+- `dist/LobeHubFluentEmoji3DFont.css`
+- `dist/LobeHubFluentEmoji3DFont.glyphs.js`
+- `dist/LobeHubFluentEmoji3DFont.manifest.json`
+
+By default the build is sharded. Each shard emits one `ttf` per browser-facing color font technology:
+
+- `dist/LobeHubFluentEmoji3DFont000-cbdt.ttf`
+- `dist/LobeHubFluentEmoji3DFont000-sbix.ttf`
+- `dist/LobeHubFluentEmoji3DFont000-svg.ttf`
+- `...`
+
+The generated CSS references those files with `tech(color-CBDT)`, `tech(color-sbix)`, and `tech(color-SVG)`.
+
+Open the showcase from the repo root after building:
+
+```shell
+python3 -m http.server 4173
+```
+
+Then visit `http://127.0.0.1:4173/`.
+
+Usage:
+
+```css
+@import url('./dist/LobeHubFluentEmoji3DFont.css');
+
+.emoji-text {
+  font-family: 'LobeHub Fluent Emoji 3D Font';
+}
+```
+
+The generated root `index.html` is the showcase page. It loads the built CSS, renders the full emoji catalog with names, and shows the import snippet plus the files you actually need to ship.
+
+To export only the files you actually need in another project:
+
+```shell
+./export_lobehub_3d_font.sh
+```
+
+That writes:
+
+- `export/LobeHubFluentEmoji3DFont/`
+- `export/LobeHubFluentEmoji3DFont-balanced-128px.zip`
+
+The export contains only:
+
+- `fonts/LobeHubFluentEmoji3DFont.css`
+- `fonts/LobeHubFluentEmoji3DFont*.ttf`
+- `README.txt`
+
+Use that same `fonts/` directory for either:
+
+1. app-local hosting inside another repository
+2. GitHub Pages hosting
+3. jsDelivr on top of the GitHub repository
+
+If you need sharded output instead of the default one-file-per-tech build, override the group size:
+
+```shell
+GROUP_SIZE=96 ./build_lobehub_3d_font.sh
+```
+
+> [!IMPORTANT]
+> This builder emits actual editable font files, but browser handling of 3D color emoji is still engine-dependent. Verify the rendered result on the browsers and platforms you ship, not just the downloaded font files.
+
 ### Via GitHub Actions
 Now we can build with GitHub Actions! Just access to [build workflow page](https://github.com/tetunori/fluent-emoji-webfont/actions/workflows/buildFont.yml) and press `Run workflow` buttton with any Font Format/Font Type as you like. Built artifact will be attached in the result page as a `Font` zip file.  
 > [!IMPORTANT] 

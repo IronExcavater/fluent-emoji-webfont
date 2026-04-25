@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fluent Emoji 3D</title>
+    <link rel="icon" href="./sample/list/favicon.ico" sizes="32x32" />
+    <link rel="stylesheet" href="./dist/LobeHubFluentEmoji3DFont.css" />
+    <script src="./dist/LobeHubFluentEmoji3DFont.glyphs.js"></script>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0a0c0f;
+        --panel: #12161b;
+        --panel-soft: #0f1318;
+        --panel-strong: #171c22;
+        --line: #232b34;
+        --line-strong: #32404d;
+        --text: #eef2f6;
+        --muted: #8d98a6;
+        --accent: #67cfb4;
+        --accent-soft: rgba(103, 207, 180, 0.14);
+        --app-width: min(1720px, calc(100vw - 28px));
+        --emoji-size: 64px;
+        --tile-min: 118px;
+        --editor-width: 360px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body {
+        line-height: 1.45;
+      }
+
+      button,
+      input,
+      select,
+      pre {
+        font: inherit;
+      }
+
+      button,
+      input,
+      select {
+        color: inherit;
+      }
+
+      input,
+      select,
+      .editor-view {
+        font-family: "LobeHub Fluent Emoji 3D Font", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      button,
+      input,
+      select {
+        min-height: 40px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+      }
+
+      button {
+        padding: 0 14px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        border-color: var(--line-strong);
+      }
+
+      input,
+      select {
+        padding: 0 12px;
+      }
+
+      input::placeholder {
+        color: #687483;
+      }
+
+      input[type="search"] {
+        width: 100%;
+      }
+
+      input[type="range"] {
+        min-height: 28px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        accent-color: var(--accent);
+      }
+
+      select {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none'%3E%3Cpath d='M3.25 5.5L7 9.25L10.75 5.5' stroke='%2393A0AE' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        background-size: 14px 14px;
+        padding-right: 38px;
+      }
+
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+
+      .page-shell {
+        width: var(--app-width);
+        margin: 0 auto;
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(10, 12, 15, 0.9);
+        backdrop-filter: blur(16px);
+      }
+
+      .topbar-inner {
+        display: grid;
+        gap: 10px;
+        padding: 12px 0;
+      }
+
+      .toolbar {
+        display: grid;
+        grid-template-columns: auto minmax(260px, 1fr) 180px 180px auto;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .brand-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        overflow: hidden;
+        background: var(--panel-strong);
+        flex: none;
+      }
+
+      .brand-icon img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        font-size: 18px;
+        line-height: 1.1;
+        font-weight: 650;
+      }
+
+      h2 {
+        font-size: 16px;
+        line-height: 1.2;
+      }
+
+      h3 {
+        font-size: 13px;
+        line-height: 1.2;
+        font-weight: 650;
+      }
+
+      .search-field {
+        min-width: 0;
+      }
+
+      .size-control {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+        padding: 0 2px 0 6px;
+        min-height: 40px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--panel);
+      }
+
+      .size-value {
+        min-width: 46px;
+        text-align: right;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .quiet-button {
+        background: var(--panel);
+      }
+
+      .group-pills {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 2px;
+        scrollbar-width: none;
+      }
+
+      .group-pills::-webkit-scrollbar {
+        display: none;
+      }
+
+      .pill {
+        min-height: 32px;
+        border-radius: 999px;
+        padding: 0 12px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--muted);
+        white-space: nowrap;
+      }
+
+      .pill.active {
+        color: var(--text);
+        border-color: rgba(103, 207, 180, 0.34);
+        background: var(--accent-soft);
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) var(--editor-width);
+        gap: 16px;
+        align-items: start;
+        padding: 16px 0 28px;
+      }
+
+      .catalog-panel,
+      .sections {
+        min-width: 0;
+      }
+
+      .sections {
+        display: grid;
+        gap: 20px;
+      }
+
+      .section {
+        display: grid;
+        gap: 10px;
+      }
+
+      .section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .section-kicker {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(var(--tile-min), 1fr));
+        gap: 8px;
+      }
+
+      .tile {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--panel);
+        overflow: hidden;
+      }
+
+      .tile-button {
+        width: 100%;
+        min-height: 100%;
+        padding: 8px;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        display: grid;
+        gap: 8px;
+        align-content: start;
+        text-align: left;
+      }
+
+      .tile:hover {
+        border-color: rgba(103, 207, 180, 0.26);
+      }
+
+      .tile-button:hover {
+        background: var(--panel-strong);
+      }
+
+      .glyph-wrap {
+        height: calc(var(--emoji-size) + 12px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .glyph {
+        font-family: "LobeHub Fluent Emoji 3D Font", sans-serif;
+        font-size: var(--emoji-size);
+        line-height: 1;
+      }
+
+      .tile-name {
+        min-height: 32px;
+        font-size: 12px;
+        line-height: 1.28;
+        font-weight: 600;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      .tile-controls {
+        padding: 0 8px 8px;
+      }
+
+      .tone-select {
+        width: 100%;
+        min-height: 32px;
+        font-size: 12px;
+      }
+
+      .empty {
+        display: none;
+        padding: 64px 18px;
+        border: 1px dashed var(--line);
+        border-radius: 10px;
+        text-align: center;
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.015);
+      }
+
+      .editor-rail {
+        position: sticky;
+        top: 92px;
+        align-self: start;
+        min-width: 0;
+      }
+
+      .editor-shell {
+        min-height: calc(100vh - 108px);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--panel);
+        display: grid;
+        grid-template-rows: auto 1fr;
+        overflow: hidden;
+      }
+
+      .editor-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .editor-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .editor-stage {
+        min-height: 0;
+        padding: 12px;
+      }
+
+      .editor-view {
+        width: 100%;
+        height: 100%;
+        min-height: calc(100vh - 176px);
+        padding: 4px;
+        outline: none;
+        white-space: pre-wrap;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        overflow: auto;
+        font-size: 34px;
+        line-height: 1.24;
+      }
+
+      .editor-view:empty::before {
+        content: attr(data-placeholder);
+        color: #627080;
+      }
+
+      .overlay[hidden] {
+        display: none;
+      }
+
+      .overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 80;
+        display: grid;
+        place-items: center;
+      }
+
+      .overlay-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(6, 8, 10, 0.72);
+        backdrop-filter: blur(10px);
+      }
+
+      .overlay-panel {
+        position: relative;
+        width: min(1040px, calc(100vw - 24px));
+        max-height: calc(100vh - 24px);
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #0f1318;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      }
+
+      .overlay-body {
+        display: grid;
+        gap: 16px;
+        padding: 16px;
+      }
+
+      .overlay-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .overlay-subtle {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .overlay-controls {
+        display: grid;
+        gap: 14px;
+      }
+
+      .control-block {
+        display: grid;
+        gap: 8px;
+      }
+
+      .control-label {
+        font-size: 11px;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+
+      .segmented {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .segment-button {
+        min-height: 34px;
+        border-radius: 999px;
+        padding: 0 12px;
+        color: var(--muted);
+      }
+
+      .segment-button.active {
+        color: var(--text);
+        border-color: rgba(103, 207, 180, 0.34);
+        background: var(--accent-soft);
+      }
+
+      .overlay-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .overlay-card {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--panel);
+        overflow: hidden;
+      }
+
+      .overlay-card-wide {
+        grid-column: 1 / -1;
+      }
+
+      .card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 12px 0;
+      }
+
+      .card-body {
+        padding: 12px;
+      }
+
+      .code-frame {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--panel-soft);
+        padding: 12px;
+      }
+
+      .toast {
+        position: fixed;
+        right: 18px;
+        bottom: 18px;
+        z-index: 90;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: rgba(18, 22, 27, 0.96);
+        opacity: 0;
+        transform: translateY(8px);
+        transition: opacity 160ms ease, transform 160ms ease;
+        pointer-events: none;
+      }
+
+      .toast.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @media (max-width: 1240px) {
+        .toolbar {
+          grid-template-columns: auto minmax(220px, 1fr) 172px 172px;
+        }
+
+        .toolbar .install-trigger {
+          grid-column: 1 / -1;
+          justify-self: start;
+        }
+      }
+
+      @media (max-width: 1060px) {
+        :root {
+          --editor-width: 1fr;
+        }
+
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .editor-rail {
+          position: static;
+        }
+
+        .editor-shell,
+        .editor-view {
+          min-height: 360px;
+        }
+      }
+
+      @media (max-width: 860px) {
+        :root {
+          --app-width: min(calc(100vw - 20px), 1720px);
+          --tile-min: 112px;
+        }
+
+        .toolbar {
+          grid-template-columns: 1fr;
+        }
+
+        .brand {
+          order: -1;
+        }
+
+        .overlay-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .overlay-card-wide {
+          grid-column: auto;
+        }
+
+        .editor-view {
+          font-size: 30px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="page-shell topbar-inner">
+        <div class="toolbar">
+          <div class="brand" aria-label="Fluent Emoji 3D">
+            <div class="brand-icon" aria-hidden="true">
+              <img src="./sample/list/favicon.ico" alt="" />
+            </div>
+            <h1>Fluent Emoji 3D</h1>
+          </div>
+
+          <label class="search-field">
+            <input
+              id="searchInput"
+              type="search"
+              placeholder="Search emoji, country names, aliases"
+              aria-label="Search emoji"
+            />
+          </label>
+
+          <select id="globalToneSelect" aria-label="Skin tone"></select>
+
+          <div class="size-control" aria-label="Grid size">
+            <input id="sizeInput" type="range" min="44" max="112" step="4" value="64" aria-label="Grid size" />
+            <span class="size-value" id="sizeValue">64px</span>
+          </div>
+
+          <button type="button" class="quiet-button install-trigger" id="openInstallButton">Install</button>
+        </div>
+
+        <nav class="group-pills" id="groupPills" aria-label="Emoji groups"></nav>
+      </div>
+    </header>
+
+    <main class="page-shell layout">
+      <section class="catalog-panel">
+        <div id="emptyState" class="empty">No emojis match this search.</div>
+        <div id="sections" class="sections"></div>
+      </section>
+
+      <aside class="editor-rail">
+        <section class="editor-shell" aria-label="Emoji editor">
+          <div class="editor-toolbar">
+            <h2>Editor</h2>
+            <div class="editor-actions">
+              <button type="button" id="copyEditorButton">Copy</button>
+              <button type="button" id="clearEditorButton">Clear</button>
+            </div>
+          </div>
+          <div class="editor-stage">
+            <div
+              id="editorView"
+              class="editor-view"
+              contenteditable="true"
+              spellcheck="false"
+              data-placeholder="Type text and emoji"
+              aria-label="Editable emoji text"
+            ></div>
+          </div>
+        </section>
+      </aside>
+    </main>
+
+    <div id="installOverlay" class="overlay" hidden>
+      <div class="overlay-backdrop" data-close-overlay></div>
+      <section class="overlay-panel" role="dialog" aria-modal="true" aria-labelledby="installTitle">
+        <div class="overlay-body">
+          <div class="overlay-head">
+            <div>
+              <h2 id="installTitle">Install</h2>
+            </div>
+            <button type="button" id="closeInstallButton">Close</button>
+          </div>
+
+          <div class="overlay-controls">
+            <div class="control-block">
+              <span class="control-label">Host</span>
+              <div class="segmented" id="deployModeButtons"></div>
+            </div>
+
+            <div class="control-block">
+              <span class="control-label">Detail</span>
+              <div class="segmented" id="detailButtons"></div>
+            </div>
+          </div>
+
+          <div class="overlay-grid">
+            <section class="overlay-card">
+              <div class="card-head">
+                <h3>Import</h3>
+                <button type="button" id="copyImportButton">Copy</button>
+              </div>
+              <div class="card-body">
+                <div class="code-frame">
+                  <pre id="importSnippet"></pre>
+                </div>
+              </div>
+            </section>
+
+            <section class="overlay-card">
+              <div class="card-head">
+                <h3>Files</h3>
+                <button type="button" id="copyFilesButton">Copy</button>
+              </div>
+              <div class="card-body">
+                <div class="code-frame">
+                  <pre id="fileList"></pre>
+                </div>
+              </div>
+            </section>
+
+            <section class="overlay-card overlay-card-wide">
+              <div class="card-head">
+                <h3>Build / export</h3>
+                <button type="button" id="copyExportButton">Copy</button>
+              </div>
+              <div class="card-body">
+                <div class="code-frame">
+                  <pre id="exportSnippet"></pre>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="toast" class="toast" aria-live="polite"></div>
+
+    <script>
+      (async function () {
+        const REPO_SLUG = "IronExcavater/fluent-emoji-webfont";
+        const REPO_BRANCH = "main";
+        const GITHUB_PAGES_BASE = "https://ironexcavater.github.io/fluent-emoji-webfont";
+        const JSDELIVR_BASE = `https://cdn.jsdelivr.net/gh/${REPO_SLUG}@${REPO_BRANCH}`;
+        const QUALITY_LABELS = {
+          compact: "Compact 96px",
+          balanced: "Balanced 128px",
+          detail: "Detail 192px",
+          max: "Max 256px",
+        };
+        const REGION_ALIAS_MAP = new Map([
+          ["US", ["usa", "united states", "united states of america", "america", "american"]],
+          ["GB", ["uk", "britain", "great britain", "united kingdom", "british"]],
+          ["AE", ["uae", "united arab emirates"]],
+          ["KR", ["south korea", "korea", "republic of korea"]],
+          ["KP", ["north korea", "dprk"]],
+        ]);
+        const GROUP_ALIAS_MAP = new Map([
+          ["People & Body", ["people", "person", "body", "hands", "skin tone"]],
+          ["Smileys & Emotion", ["smileys", "faces", "emotion", "feelings"]],
+          ["Animals & Nature", ["animals", "nature", "plants", "weather"]],
+          ["Food & Drink", ["food", "drink", "meals"]],
+          ["Travel & Places", ["travel", "places", "map", "country", "location"]],
+          ["Objects", ["objects", "tools", "items"]],
+          ["Symbols", ["symbols", "icons", "signs"]],
+          ["Flags", ["flags", "countries", "regions"]],
+        ]);
+        const SEARCH_ALIAS_RULES = [
+          { pattern: /\blaptop\b|\bcomputer\b/, aliases: ["pc", "notebook"] },
+          { pattern: /\bmobile phone\b/, aliases: ["phone", "cell phone", "smartphone"] },
+          { pattern: /\bautomobile\b/, aliases: ["car", "vehicle"] },
+          { pattern: /\bred heart\b/, aliases: ["love", "heart"] },
+          { pattern: /\bgrinning face\b|\bsmiling face\b|\bbeaming face\b/, aliases: ["happy", "smile", "joy"] },
+          { pattern: /\bblood type\b/, aliases: ["medical", "hospital"] },
+        ];
+        const REGION_DISPLAY_NAMES =
+          typeof Intl !== "undefined" && typeof Intl.DisplayNames === "function"
+            ? new Intl.DisplayNames(["en"], { type: "region" })
+            : null;
+        const TONE_CODEPOINTS = new Set([0x1f3fb, 0x1f3fc, 0x1f3fd, 0x1f3fe, 0x1f3ff]);
+        const TONE_LABELS = new Map([
+          [0x1f3fb, "Light"],
+          [0x1f3fc, "Medium-Light"],
+          [0x1f3fd, "Medium"],
+          [0x1f3fe, "Medium-Dark"],
+          [0x1f3ff, "Dark"],
+        ]);
+        const DEFAULT_EDITOR_RAW = "#️⃣ ❤️‍🔥 👩🏽‍💻 👨🏿‍👩🏻‍👧🏾‍👦🏼 🇺🇸";
+
+        const state = {
+          search: "",
+          activeGroup: "",
+          size: 64,
+          fontStatus: "loading",
+          variantSelection: new Map(),
+          globalTone: "",
+          deployMode: "local",
+          detailProfile: "balanced",
+          editorRaw: DEFAULT_EDITOR_RAW,
+        };
+
+        const root = document.documentElement;
+        const searchInput = document.getElementById("searchInput");
+        const globalToneSelect = document.getElementById("globalToneSelect");
+        const sizeInput = document.getElementById("sizeInput");
+        const sizeValue = document.getElementById("sizeValue");
+        const groupPills = document.getElementById("groupPills");
+        const sectionsElement = document.getElementById("sections");
+        const emptyState = document.getElementById("emptyState");
+        const editorView = document.getElementById("editorView");
+        const toast = document.getElementById("toast");
+        const copyEditorButton = document.getElementById("copyEditorButton");
+        const clearEditorButton = document.getElementById("clearEditorButton");
+        const openInstallButton = document.getElementById("openInstallButton");
+        const closeInstallButton = document.getElementById("closeInstallButton");
+        const installOverlay = document.getElementById("installOverlay");
+        const deployModeButtons = document.getElementById("deployModeButtons");
+        const detailButtons = document.getElementById("detailButtons");
+        const importSnippet = document.getElementById("importSnippet");
+        const exportSnippet = document.getElementById("exportSnippet");
+        const fileList = document.getElementById("fileList");
+        const copyImportButton = document.getElementById("copyImportButton");
+        const copyExportButton = document.getElementById("copyExportButton");
+        const copyFilesButton = document.getElementById("copyFilesButton");
+
+        function showToast(message) {
+          toast.textContent = message;
+          toast.classList.add("visible");
+          clearTimeout(showToast.timeoutId);
+          showToast.timeoutId = setTimeout(() => toast.classList.remove("visible"), 1400);
+        }
+
+        function normalizeSearchText(value) {
+          return String(value || "")
+            .toLowerCase()
+            .normalize("NFKD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/&/g, " and ")
+            .replace(/['’]/g, "")
+            .replace(/[^a-z0-9]+/g, " ")
+            .trim();
+        }
+
+        function codepointsFromField(field) {
+          return field.split(" ").map((value) => Number.parseInt(value, 16));
+        }
+
+        function regionCodeFromCodepoints(codepoints) {
+          if (
+            codepoints.length === 2 &&
+            codepoints.every((codepoint) => codepoint >= 0x1f1e6 && codepoint <= 0x1f1ff)
+          ) {
+            return String.fromCharCode(
+              ...codepoints.map((codepoint) => 65 + codepoint - 0x1f1e6)
+            );
+          }
+          return "";
+        }
+
+        function regionNameFromCodepoints(codepoints) {
+          const regionCode = regionCodeFromCodepoints(codepoints);
+          if (!regionCode) {
+            return "";
+          }
+          return REGION_DISPLAY_NAMES?.of(regionCode) || "";
+        }
+
+        function toneLabelForCodepoints(codepoints) {
+          const tones = codepoints
+            .filter((codepoint) => TONE_CODEPOINTS.has(codepoint))
+            .map((codepoint) => TONE_LABELS.get(codepoint));
+          return tones.length ? tones.join(" / ") : "Default";
+        }
+
+        function cleanVariantName(name) {
+          let cleaned = name;
+          for (const toneLabel of TONE_LABELS.values()) {
+            const escaped = toneLabel.replace("-", "\\-");
+            cleaned = cleaned.replace(new RegExp(`([:,])?\\s*${escaped} Skin Tone`, "gi"), "");
+          }
+          return cleaned.replace(/\s{2,}/g, " ").replace(/\s+:/g, ":").replace(/:\s*$/g, "").trim();
+        }
+
+        function compareToneArrays(left, right) {
+          const maxLength = Math.max(left.length, right.length);
+          for (let index = 0; index < maxLength; index += 1) {
+            const leftValue = left[index] ?? -1;
+            const rightValue = right[index] ?? -1;
+            if (leftValue !== rightValue) {
+              return leftValue - rightValue;
+            }
+          }
+          return 0;
+        }
+
+        function inferQualityProfile(maxDimension) {
+          const profile = Object.entries(QUALITY_LABELS).find(([, label]) => label.includes(`${maxDimension}px`));
+          return profile ? profile[0] : "balanced";
+        }
+
+        function displayNameForVariant(variant) {
+          const regionName = regionNameFromCodepoints(variant.codepointsArray);
+          if (regionName) {
+            return regionName;
+          }
+          return cleanVariantName(variant.name);
+        }
+
+        function searchAliasesForVariant(variant, group) {
+          const aliases = new Set();
+          const normalizedName = normalizeSearchText(variant.name);
+          const regionCode = regionCodeFromCodepoints(variant.codepointsArray);
+          const regionName = regionNameFromCodepoints(variant.codepointsArray);
+
+          if (regionCode) {
+            aliases.add(regionCode);
+            aliases.add(regionCode.toLowerCase());
+            aliases.add(`flag ${regionCode}`);
+            aliases.add("country");
+            aliases.add("nation");
+            if (regionName) {
+              aliases.add(regionName);
+              aliases.add(`flag ${regionName}`);
+              aliases.add(`country ${regionName}`);
+            }
+            for (const extra of REGION_ALIAS_MAP.get(regionCode) || []) {
+              aliases.add(extra);
+            }
+          }
+
+          for (const extra of GROUP_ALIAS_MAP.get(group) || []) {
+            aliases.add(extra);
+          }
+
+          for (const rule of SEARCH_ALIAS_RULES) {
+            if (rule.pattern.test(normalizedName)) {
+              for (const alias of rule.aliases) {
+                aliases.add(alias);
+              }
+            }
+          }
+
+          return Array.from(aliases);
+        }
+
+        function createTrie() {
+          return { value: null, children: new Map() };
+        }
+
+        const emojiTrie = createTrie();
+        const displayToEmoji = new Map();
+
+        function addEmojiMapping(rawEmoji, displayEmoji) {
+          let node = emojiTrie;
+          for (const character of Array.from(rawEmoji)) {
+            if (!node.children.has(character)) {
+              node.children.set(character, createTrie());
+            }
+            node = node.children.get(character);
+          }
+          node.value = displayEmoji;
+          if (displayEmoji !== rawEmoji) {
+            displayToEmoji.set(displayEmoji, rawEmoji);
+          }
+        }
+
+        let manifest;
+        let glyphs;
+
+        try {
+          const response = await fetch("./dist/LobeHubFluentEmoji3DFont.manifest.json");
+          if (!response.ok) {
+            throw new Error(`Manifest request failed: ${response.status}`);
+          }
+          manifest = await response.json();
+          glyphs = window.LobeHubFluentEmoji3DFontGlyphs || [];
+          if (!glyphs.length) {
+            throw new Error("Glyph catalog is missing");
+          }
+        } catch (error) {
+          console.error(error);
+          emptyState.style.display = "block";
+          emptyState.textContent = "The showcase needs a complete dist build before it can render the catalog.";
+          openInstallButton.disabled = true;
+          return;
+        }
+
+        state.detailProfile = manifest.qualityProfile || inferQualityProfile(manifest.maxDimension);
+
+        for (const glyph of glyphs) {
+          addEmojiMapping(glyph.emoji, glyph.display || glyph.emoji);
+        }
+
+        function toDisplayText(rawText) {
+          const characters = Array.from(rawText);
+          let output = "";
+          let index = 0;
+
+          while (index < characters.length) {
+            let node = emojiTrie;
+            let cursor = index;
+            let bestDisplay = null;
+            let bestIndex = index;
+
+            while (cursor < characters.length && node.children.has(characters[cursor])) {
+              node = node.children.get(characters[cursor]);
+              cursor += 1;
+              if (node.value) {
+                bestDisplay = node.value;
+                bestIndex = cursor;
+              }
+            }
+
+            if (bestDisplay) {
+              output += bestDisplay;
+              index = bestIndex;
+            } else {
+              output += characters[index];
+              index += 1;
+            }
+          }
+
+          return output;
+        }
+
+        function fromDisplayText(displayText) {
+          return Array.from(displayText)
+            .map((character) => displayToEmoji.get(character) || character)
+            .join("");
+        }
+
+        function buildFamilies() {
+          const groupOrder = [];
+          const familiesByKey = new Map();
+
+          for (const glyph of glyphs) {
+            const codepoints = codepointsFromField(glyph.codepoints);
+            const baseCodepoints = codepoints.filter((codepoint) => !TONE_CODEPOINTS.has(codepoint));
+            const group = glyph.group || "Uncategorized";
+            const familyKey = baseCodepoints.join(" ");
+            const key = group + "|" + familyKey;
+
+            if (!familiesByKey.has(key)) {
+              familiesByKey.set(key, {
+                id: key,
+                group,
+                baseCodepoints,
+                variants: [],
+              });
+              if (!groupOrder.includes(group)) {
+                groupOrder.push(group);
+              }
+            }
+
+            const family = familiesByKey.get(key);
+            family.variants.push({
+              ...glyph,
+              codepointsArray: codepoints,
+              toneLabel: toneLabelForCodepoints(codepoints),
+              hasTone: codepoints.some((codepoint) => TONE_CODEPOINTS.has(codepoint)),
+            });
+          }
+
+          const families = Array.from(familiesByKey.values()).map((family) => {
+            family.variants.sort((left, right) => {
+              const leftTones = left.codepointsArray.filter((codepoint) => TONE_CODEPOINTS.has(codepoint));
+              const rightTones = right.codepointsArray.filter((codepoint) => TONE_CODEPOINTS.has(codepoint));
+              if (leftTones.length === 0 && rightTones.length > 0) {
+                return -1;
+              }
+              if (leftTones.length > 0 && rightTones.length === 0) {
+                return 1;
+              }
+              return compareToneArrays(leftTones, rightTones) || left.name.localeCompare(right.name);
+            });
+
+            const representative = family.variants.find((variant) => !variant.hasTone) || family.variants[0];
+            const label = displayNameForVariant(representative);
+            const searchText = normalizeSearchText(
+              family.variants
+                .flatMap((variant) => [
+                  variant.name,
+                  label,
+                  variant.group,
+                  variant.codepoints,
+                  variant.codepoints.replace(/\s+/g, ""),
+                  variant.emoji,
+                  variant.display,
+                  variant.toneLabel,
+                  ...(variant.keywords || []),
+                  ...searchAliasesForVariant(variant, family.group),
+                ])
+                .join(" ")
+            );
+
+            return {
+              ...family,
+              name: label,
+              representative,
+              searchText,
+            };
+          });
+
+          const groupCounts = new Map();
+          for (const family of families) {
+            groupCounts.set(family.group, (groupCounts.get(family.group) || 0) + 1);
+          }
+
+          return { families, groupOrder, groupCounts };
+        }
+
+        const catalog = buildFamilies();
+
+        function getSelectedVariant(family) {
+          const selectedCodepoints = state.variantSelection.get(family.id);
+          if (selectedCodepoints) {
+            const selected = family.variants.find((variant) => variant.codepoints === selectedCodepoints);
+            if (selected) {
+              return selected;
+            }
+          }
+          if (state.globalTone) {
+            const toned = family.variants.find((variant) => variant.toneLabel === state.globalTone);
+            if (toned) {
+              return toned;
+            }
+          }
+          return family.representative;
+        }
+
+        function setGridSize(size) {
+          state.size = size;
+          root.style.setProperty("--emoji-size", size + "px");
+          root.style.setProperty("--tile-min", Math.max(112, size + 36) + "px");
+          sizeValue.textContent = size + "px";
+        }
+
+        function buildImportSnippet() {
+          const basePath =
+            state.deployMode === "pages"
+              ? `${GITHUB_PAGES_BASE}/fonts`
+              : state.deployMode === "jsdelivr"
+                ? `${JSDELIVR_BASE}/fonts`
+                : "/fonts";
+          return `<link rel="stylesheet" href="${basePath}/${manifest.filePrefix}.css" />\n\n.emoji-text {\n  font-family: "${manifest.familyName}", sans-serif;\n}`;
+        }
+
+        function buildExportSnippet() {
+          const lines = [`QUALITY_PROFILE=${state.detailProfile} ./build_lobehub_3d_font.sh`];
+          if (state.deployMode === "local") {
+            lines.push("./export_lobehub_3d_font.sh");
+          } else if (state.deployMode === "pages") {
+            lines.push("./export_lobehub_3d_font.py --out-dir export/github-pages-font");
+          } else {
+            lines.push("./export_lobehub_3d_font.py --out-dir export/jsdelivr-font");
+          }
+          return lines.join("\n");
+        }
+
+        function buildFileList() {
+          const formatCounts = new Map();
+          for (const group of manifest.groups) {
+            for (const source of group.sources) {
+              formatCounts.set(source.colorFormat, (formatCounts.get(source.colorFormat) || 0) + 1);
+            }
+          }
+
+          const lines = ["fonts/", `  ${manifest.filePrefix}.css`, `  ${manifest.filePrefix}*.ttf`, ""];
+          for (const colorFormat of ["cbdt", "sbix", "svg"]) {
+            const count = formatCounts.get(colorFormat);
+            if (count) {
+              lines.push(`${count} x *-${colorFormat}.ttf`);
+            }
+          }
+          return lines.join("\n");
+        }
+
+        function renderGroupControls() {
+          groupPills.innerHTML = "";
+          const groups = ["All", ...catalog.groupOrder];
+
+          for (const group of groups) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "pill" + ((state.activeGroup || "All") === group ? " active" : "");
+            button.textContent = group;
+            if (group !== "All") {
+              button.title = `${group} (${catalog.groupCounts.get(group) || 0})`;
+            }
+            button.addEventListener("click", () => {
+              state.activeGroup = group === "All" ? "" : group;
+              renderGroupControls();
+              renderCatalog();
+            });
+            groupPills.appendChild(button);
+          }
+        }
+
+        function renderToneControl() {
+          const options = ["", ...Array.from(TONE_LABELS.values())];
+          globalToneSelect.innerHTML = "";
+          for (const tone of options) {
+            const option = document.createElement("option");
+            option.value = tone;
+            option.textContent = tone || "Skin tone";
+            globalToneSelect.appendChild(option);
+          }
+          globalToneSelect.value = state.globalTone;
+        }
+
+        function renderInstallControls() {
+          const deployOptions = [
+            ["local", "App assets"],
+            ["pages", "GitHub Pages"],
+            ["jsdelivr", "jsDelivr"],
+          ];
+          deployModeButtons.innerHTML = "";
+          for (const [value, label] of deployOptions) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "segment-button" + (state.deployMode === value ? " active" : "");
+            button.textContent = label;
+            button.addEventListener("click", () => {
+              state.deployMode = value;
+              renderInstallControls();
+              renderInstallOverlay();
+            });
+            deployModeButtons.appendChild(button);
+          }
+
+          detailButtons.innerHTML = "";
+          for (const [value, label] of Object.entries(QUALITY_LABELS)) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "segment-button" + (state.detailProfile === value ? " active" : "");
+            button.textContent = label;
+            button.addEventListener("click", () => {
+              state.detailProfile = value;
+              renderInstallControls();
+              renderInstallOverlay();
+            });
+            detailButtons.appendChild(button);
+          }
+        }
+
+        function renderInstallOverlay() {
+          importSnippet.textContent = buildImportSnippet();
+          exportSnippet.textContent = buildExportSnippet();
+          fileList.textContent = buildFileList();
+        }
+
+        function familyMatches(family) {
+          if (state.activeGroup && family.group !== state.activeGroup) {
+            return false;
+          }
+          if (!state.search) {
+            return true;
+          }
+          const queryTokens = normalizeSearchText(state.search).split(/\s+/).filter(Boolean);
+          return queryTokens.every((token) => family.searchText.includes(token));
+        }
+
+        function renderCatalog() {
+          const filteredFamilies = catalog.families.filter(familyMatches);
+          const groupedFamilies = new Map();
+
+          for (const family of filteredFamilies) {
+            if (!groupedFamilies.has(family.group)) {
+              groupedFamilies.set(family.group, []);
+            }
+            groupedFamilies.get(family.group).push(family);
+          }
+
+          emptyState.style.display = filteredFamilies.length ? "none" : "block";
+          sectionsElement.innerHTML = "";
+
+          const visibleGroups = state.activeGroup ? [state.activeGroup] : catalog.groupOrder;
+          for (const group of visibleGroups) {
+            const families = groupedFamilies.get(group) || [];
+            if (!families.length) {
+              continue;
+            }
+
+            families.sort((left, right) => left.name.localeCompare(right.name));
+
+            const section = document.createElement("section");
+            section.className = "section";
+
+            const heading = document.createElement("div");
+            heading.className = "section-head";
+            heading.innerHTML = `<h3>${group}</h3>`;
+            section.appendChild(heading);
+
+            const grid = document.createElement("div");
+            grid.className = "grid";
+
+            for (const family of families) {
+              const variant = getSelectedVariant(family);
+              const tile = document.createElement("article");
+              tile.className = "tile";
+              tile.title = `${variant.name}\n${variant.codepoints}`;
+
+              const button = document.createElement("button");
+              button.type = "button";
+              button.className = "tile-button";
+              button.addEventListener("click", () => {
+                insertRawText(variant.emoji);
+                showToast("Inserted");
+              });
+
+              const glyphWrap = document.createElement("div");
+              glyphWrap.className = "glyph-wrap";
+
+              const glyph = document.createElement("div");
+              glyph.className = "glyph";
+              glyph.textContent = state.fontStatus === "ready" ? variant.display || variant.emoji : variant.emoji;
+              glyphWrap.appendChild(glyph);
+
+              const name = document.createElement("div");
+              name.className = "tile-name";
+              name.textContent = family.name;
+
+              button.appendChild(glyphWrap);
+              button.appendChild(name);
+              tile.appendChild(button);
+
+              if (family.variants.length > 1) {
+                const controls = document.createElement("div");
+                controls.className = "tile-controls";
+
+                const select = document.createElement("select");
+                select.className = "tone-select";
+                select.setAttribute("aria-label", `${family.name} skin tone`);
+
+                for (const familyVariant of family.variants) {
+                  const option = document.createElement("option");
+                  option.value = familyVariant.codepoints;
+                  option.textContent = familyVariant.toneLabel;
+                  if (familyVariant.codepoints === variant.codepoints) {
+                    option.selected = true;
+                  }
+                  select.appendChild(option);
+                }
+
+                select.addEventListener("click", (event) => event.stopPropagation());
+                select.addEventListener("change", () => {
+                  state.variantSelection.set(family.id, select.value);
+                  renderCatalog();
+                });
+
+                controls.appendChild(select);
+                tile.appendChild(controls);
+              }
+
+              grid.appendChild(tile);
+            }
+
+            section.appendChild(grid);
+            sectionsElement.appendChild(section);
+          }
+        }
+
+        function editorDisplayText() {
+          return editorView.textContent || "";
+        }
+
+        function getSelectionOffsets(rootNode) {
+          const selection = window.getSelection();
+          if (!selection || selection.rangeCount === 0 || !rootNode.contains(selection.anchorNode)) {
+            const length = editorDisplayText().length;
+            return { start: length, end: length };
+          }
+
+          const range = selection.getRangeAt(0);
+          const startRange = range.cloneRange();
+          startRange.selectNodeContents(rootNode);
+          startRange.setEnd(range.startContainer, range.startOffset);
+
+          const endRange = range.cloneRange();
+          endRange.selectNodeContents(rootNode);
+          endRange.setEnd(range.endContainer, range.endOffset);
+
+          return {
+            start: startRange.toString().length,
+            end: endRange.toString().length,
+          };
+        }
+
+        function setSelectionOffsets(rootNode, startOffset, endOffset) {
+          const selection = window.getSelection();
+          if (!selection) {
+            return;
+          }
+
+          const safeStart = Math.max(0, startOffset);
+          const safeEnd = Math.max(0, endOffset);
+
+          if (!rootNode.firstChild) {
+            rootNode.appendChild(document.createTextNode(""));
+          }
+
+          const textNode = rootNode.firstChild;
+          const textLength = textNode.nodeValue.length;
+          const range = document.createRange();
+          range.setStart(textNode, Math.min(safeStart, textLength));
+          range.setEnd(textNode, Math.min(safeEnd, textLength));
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+
+        function renderEditor(rawText, selection) {
+          state.editorRaw = rawText;
+          const displayText = state.fontStatus === "ready" ? toDisplayText(rawText) : rawText;
+
+          if (displayText) {
+            editorView.textContent = displayText;
+          } else {
+            editorView.textContent = "";
+          }
+
+          if (selection) {
+            setSelectionOffsets(editorView, selection.start, selection.end);
+          }
+        }
+
+        function normalizeEditor() {
+          const draftDisplay = editorDisplayText();
+          const offsets = getSelectionOffsets(editorView);
+          const rawBefore = fromDisplayText(draftDisplay.slice(0, offsets.start));
+          const rawAfter = fromDisplayText(draftDisplay.slice(0, offsets.end));
+          const rawValue = fromDisplayText(draftDisplay);
+          const displayBefore = state.fontStatus === "ready" ? toDisplayText(rawBefore) : rawBefore;
+          const displayAfter = state.fontStatus === "ready" ? toDisplayText(rawAfter) : rawAfter;
+          renderEditor(rawValue, { start: displayBefore.length, end: displayAfter.length });
+        }
+
+        function insertRawText(text) {
+          editorView.focus();
+          const displayValue = editorDisplayText();
+          const offsets = getSelectionOffsets(editorView);
+          const rawBefore = fromDisplayText(displayValue.slice(0, offsets.start));
+          const rawAfter = fromDisplayText(displayValue.slice(offsets.end));
+          const nextRaw = rawBefore + text + rawAfter;
+          const caretText = state.fontStatus === "ready" ? toDisplayText(rawBefore + text) : rawBefore + text;
+          renderEditor(nextRaw, { start: caretText.length, end: caretText.length });
+        }
+
+        async function copyText(text) {
+          await navigator.clipboard.writeText(text);
+          showToast("Copied");
+        }
+
+        function openInstallOverlay() {
+          installOverlay.hidden = false;
+          document.body.style.overflow = "hidden";
+        }
+
+        function closeInstallOverlay() {
+          installOverlay.hidden = true;
+          document.body.style.overflow = "";
+        }
+
+        async function ensureFontReady() {
+          if (!document.fonts || typeof document.fonts.load !== "function") {
+            state.fontStatus = "failed";
+            return;
+          }
+
+          try {
+            const fontSpec = `64px "${manifest.familyName}"`;
+            const probes = ["😀", "❤️‍🔥", "#️⃣", "\uE000"];
+            await Promise.all(probes.map((probe) => document.fonts.load(fontSpec, probe)));
+            await document.fonts.ready;
+            state.fontStatus = probes.every((probe) => document.fonts.check(fontSpec, probe)) ? "ready" : "failed";
+          } catch (error) {
+            state.fontStatus = "failed";
+          }
+        }
+
+        renderGroupControls();
+        renderToneControl();
+        renderInstallControls();
+        renderInstallOverlay();
+        setGridSize(state.size);
+        sizeInput.value = String(state.size);
+        renderCatalog();
+        renderEditor(state.editorRaw);
+
+        await ensureFontReady();
+        renderEditor(state.editorRaw);
+        renderCatalog();
+
+        searchInput.addEventListener("input", () => {
+          state.search = searchInput.value.trim();
+          renderCatalog();
+        });
+
+        globalToneSelect.addEventListener("change", () => {
+          state.globalTone = globalToneSelect.value;
+          state.variantSelection.clear();
+          renderCatalog();
+        });
+
+        sizeInput.addEventListener("input", () => {
+          setGridSize(Number(sizeInput.value));
+        });
+
+        openInstallButton.addEventListener("click", openInstallOverlay);
+        closeInstallButton.addEventListener("click", closeInstallOverlay);
+
+        installOverlay.addEventListener("click", (event) => {
+          if (event.target.hasAttribute("data-close-overlay")) {
+            closeInstallOverlay();
+          }
+        });
+
+        window.addEventListener("keydown", (event) => {
+          if (event.key === "Escape" && !installOverlay.hidden) {
+            closeInstallOverlay();
+          }
+        });
+
+        editorView.addEventListener("beforeinput", (event) => {
+          if (event.inputType === "insertParagraph" || event.inputType === "insertLineBreak") {
+            event.preventDefault();
+            insertRawText("\n");
+          }
+        });
+
+        editorView.addEventListener("input", () => {
+          normalizeEditor();
+        });
+
+        editorView.addEventListener("paste", (event) => {
+          event.preventDefault();
+          const text = event.clipboardData.getData("text/plain");
+          insertRawText(text);
+        });
+
+        editorView.addEventListener("copy", (event) => {
+          const offsets = getSelectionOffsets(editorView);
+          const displayValue = editorDisplayText();
+          const rawSelection = fromDisplayText(displayValue.slice(offsets.start, offsets.end));
+          event.preventDefault();
+          event.clipboardData.setData("text/plain", rawSelection);
+        });
+
+        editorView.addEventListener("cut", (event) => {
+          const offsets = getSelectionOffsets(editorView);
+          const displayValue = editorDisplayText();
+          const rawValue = fromDisplayText(displayValue);
+          const rawStart = fromDisplayText(displayValue.slice(0, offsets.start)).length;
+          const rawEnd = fromDisplayText(displayValue.slice(0, offsets.end)).length;
+          event.preventDefault();
+          event.clipboardData.setData("text/plain", rawValue.slice(rawStart, rawEnd));
+          const nextRaw = rawValue.slice(0, rawStart) + rawValue.slice(rawEnd);
+          const nextDisplay =
+            state.fontStatus === "ready" ? toDisplayText(rawValue.slice(0, rawStart)) : rawValue.slice(0, rawStart);
+          renderEditor(nextRaw, { start: nextDisplay.length, end: nextDisplay.length });
+        });
+
+        clearEditorButton.addEventListener("click", () => {
+          renderEditor("", { start: 0, end: 0 });
+          editorView.focus();
+        });
+
+        copyEditorButton.addEventListener("click", async () => {
+          await copyText(state.editorRaw);
+        });
+
+        copyImportButton.addEventListener("click", async () => {
+          await copyText(importSnippet.textContent);
+        });
+
+        copyExportButton.addEventListener("click", async () => {
+          await copyText(exportSnippet.textContent);
+        });
+
+        copyFilesButton.addEventListener("click", async () => {
+          await copyText(fileList.textContent);
+        });
+      })();
+    </script>
+  </body>
+</html>
