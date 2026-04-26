@@ -1,6 +1,6 @@
-# LobeHub Fluent Emoji 3D — Webfont
+# Fluent Emoji 3D — Webfont
 
-A fork of [fluent-emoji-webfont](https://github.com/tetunori/fluent-emoji-webfont) that adds a real color webfont built from the [LobeHub Fluent Emoji 3D](https://github.com/lobehub/fluent-emoji-3d) asset pack — 3D-rendered emoji usable anywhere via `font-family`.
+A fork of [fluent-emoji-webfont](https://github.com/tetunori/fluent-emoji-webfont) that builds the [LobeHub Fluent Emoji 3D](https://github.com/lobehub/fluent-emoji-3d) asset pack as a real color webfont.
 
 **[Live showcase →](https://ironexcavater.github.io/fluent-emoji-webfont/)**
 
@@ -16,13 +16,21 @@ The base fork serves the original Microsoft Fluent Emoji in 2D (SVG/CBDT/SBIX). 
 
 ## Usage
 
+The CSS and font filenames now include the quality profile, while the runtime `font-family` name stays:
+
+```css
+font-family: 'Fluent Emoji 3D', sans-serif;
+```
+
+Do not import multiple quality variants on the same page unless you intentionally want the last one loaded to win.
+
 ### Via CDN (GitHub Pages)
 
 ```css
-@import url('https://ironexcavater.github.io/fluent-emoji-webfont/fonts/LobeHubFluentEmoji3DFont.css');
+@import url('https://ironexcavater.github.io/fluent-emoji-webfont/fonts/balanced/FluentEmoji3D-balanced-128px.css');
 
 .emoji-text {
-  font-family: 'LobeHub Fluent Emoji 3D Font', sans-serif;
+  font-family: 'Fluent Emoji 3D', sans-serif;
 }
 ```
 
@@ -31,12 +39,12 @@ The base fork serves the original Microsoft Fluent Emoji in 2D (SVG/CBDT/SBIX). 
 Copy the exported `fonts/` directory into your project:
 
 ```html
-<link rel="stylesheet" href="/fonts/LobeHubFluentEmoji3DFont.css" />
+<link rel="stylesheet" href="/fonts/balanced/FluentEmoji3D-balanced-128px.css" />
 ```
 
 ```css
 .emoji-text {
-  font-family: 'LobeHub Fluent Emoji 3D Font', sans-serif;
+  font-family: 'Fluent Emoji 3D', sans-serif;
 }
 ```
 
@@ -45,12 +53,12 @@ Copy the exported `fonts/` directory into your project:
 A JS glyph manifest is included for building pickers or search UIs:
 
 ```html
-<script src="/fonts/LobeHubFluentEmoji3DFont.glyphs.js"></script>
+<script src="/fonts/balanced/FluentEmoji3D-balanced-128px.glyphs.js"></script>
 ```
 
 ```js
-// exposes window.LobeHubFluentEmoji3DFontGlyphs
-const glyphs = window.LobeHubFluentEmoji3DFontGlyphs;
+// exposes window.FluentEmoji3DGlyphs
+const glyphs = window.FluentEmoji3DGlyphs;
 ```
 
 ## Building
@@ -61,7 +69,14 @@ Requires: `node`, `python3`, `npm`
 ./build_lobehub_3d_font.sh
 ```
 
-Downloads `@lobehub/fluent-emoji-3d` from npm, builds the full sharded font into `dist/`, and writes the showcase `index.html`.
+Downloads `@lobehub/fluent-emoji-3d` from npm, builds one quality variant, and writes it into `dist/` using quality-specific filenames such as:
+
+```text
+FluentEmoji3D-balanced-128px.css
+FluentEmoji3D-balanced-128px.manifest.json
+FluentEmoji3D-balanced-128px.glyphs.js
+FluentEmoji3D-balanced-128px000-cbdt.ttf
+```
 
 ### Quality profiles
 
@@ -78,6 +93,21 @@ QUALITY_PROFILE=detail ./build_lobehub_3d_font.sh
 MAX_DIMENSION=160 ./build_lobehub_3d_font.sh
 ```
 
+### Build all qualities
+
+```shell
+./build_all_lobehub_3d_fonts.sh
+```
+
+This writes:
+
+```text
+dist/compact/
+dist/balanced/
+dist/detail/
+dist/max/
+```
+
 ### Preview locally
 
 ```shell
@@ -88,16 +118,29 @@ python3 -m http.server 4173
 ## Exporting a clean package
 
 ```shell
-./export_lobehub_3d_font.sh
+./export_lobehub_3d_font.sh dist/balanced/FluentEmoji3D-balanced-128px.manifest.json
 ```
 
-Writes `export/LobeHubFluentEmoji3DFont/` containing only the files needed to ship in another project:
+Writes `export/<file-prefix>/` containing only the files needed to ship in another project:
 
 ```
-fonts/LobeHubFluentEmoji3DFont.css
-fonts/LobeHubFluentEmoji3DFont*.ttf
+fonts/FluentEmoji3D-balanced-128px.css
+fonts/FluentEmoji3D-balanced-128px*.ttf
 README.txt
 ```
+
+### GitHub Pages
+
+The Pages workflow builds and stages all four quality variants on push to `main`:
+
+```text
+fonts/compact/
+fonts/balanced/
+fonts/detail/
+fonts/max/
+```
+
+For `detail` and `max`, the Chromium-facing `cbdt` shards are capped at `128px` because `nanoemoji` fails above that threshold in CBDT generation. The Safari `sbix` and Firefox `svg` shards keep the full `192px` and `256px` resolutions.
 
 > [!IMPORTANT]
 > Browser handling of color emoji fonts is still engine-dependent. Test on your target platforms — don't rely on the font file alone.

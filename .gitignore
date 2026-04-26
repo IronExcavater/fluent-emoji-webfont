@@ -166,3 +166,11 @@ test/confirmDist/tmp-ttf
 
 # Large export archives (exceed GitHub 100 MB limit)
 export/*.zip
+export/FluentEmoji3D-*/
+
+# Generated multi-quality LobeHub 3D outputs
+_site/
+dist/compact/
+dist/balanced/
+dist/detail/
+dist/max/

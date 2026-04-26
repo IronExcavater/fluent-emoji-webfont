@@ -29,6 +29,7 @@ COLOR_FORMAT_SPECS = {
     "svg": ColorFormatSpec("svg", "untouchedsvg", "svg", "color-SVG"),
 }
 DEFAULT_COLOR_FORMATS = ("cbdt", "sbix", "svg")
+CBDT_MAX_BITMAP_RESOLUTION = 128
 QUALITY_PROFILES = {
     "compact": 96,
     "balanced": 128,
@@ -53,6 +54,10 @@ SKIN_TONES = {
 
 def parse_codepoint_sequence(stem: str) -> tuple[int, ...]:
     return tuple(int(part, 16) for part in re.split(r"[-_]", stem))
+
+
+def default_file_prefix(base_name: str, quality_profile: str, max_dimension: int) -> str:
+    return f"{base_name}-{quality_profile}-{max_dimension}px"
 
 
 def emoji_from_sequence(sequence: tuple[int, ...]) -> str:
@@ -233,9 +238,14 @@ def build_group_fonts(
             spec.nanoemoji_format,
         ]
         if color_format in {"cbdt", "sbix"}:
+            bitmap_resolution = (
+                min(max_dimension, CBDT_MAX_BITMAP_RESOLUTION)
+                if color_format == "cbdt"
+                else max_dimension
+            )
             command.append("--use_pngquant" if use_pngquant else "--nouse_pngquant")
             command.append("--use_zopflipng" if use_zopflipng else "--nouse_zopflipng")
-            command.extend(["--bitmap_resolution", str(max_dimension)])
+            command.extend(["--bitmap_resolution", str(bitmap_resolution)])
         command.extend(str(path) for path in svg_paths)
         run_command(command, cwd=group_dir)
 
@@ -250,6 +260,11 @@ def build_group_fonts(
                 "cssFormat": "truetype",
                 "colorFormat": spec.key,
                 "tech": spec.tech,
+                "bitmapResolution": (
+                    min(max_dimension, CBDT_MAX_BITMAP_RESOLUTION)
+                    if color_format == "cbdt"
+                    else max_dimension
+                ),
             }
         )
 
@@ -375,6 +390,7 @@ def write_glyphs_js(
             "  const glyphs = "
             + json.dumps(glyphs, ensure_ascii=False, separators=(",", ":"))
             + ";\n"
+            "  global.FluentEmoji3DGlyphs = glyphs;\n"
             "  global.LobeHubFluentEmoji3DFontGlyphs = glyphs;\n"
             "})(typeof window !== 'undefined' ? window : globalThis);\n"
         ),
@@ -483,8 +499,9 @@ def main() -> None:
     parser.add_argument("--assets-dir", type=Path, required=True)
     parser.add_argument("--dist-dir", type=Path, default=Path("dist"))
     parser.add_argument("--work-dir", type=Path, default=Path("build/lobehub-3d-font"))
-    parser.add_argument("--family-name", default="LobeHub Fluent Emoji 3D Font")
-    parser.add_argument("--file-prefix", default="LobeHubFluentEmoji3DFont")
+    parser.add_argument("--family-name", default="Fluent Emoji 3D")
+    parser.add_argument("--file-prefix", default=None)
+    parser.add_argument("--file-prefix-base", default="FluentEmoji3D")
     parser.add_argument("--group-size", type=int, default=128)
     parser.add_argument(
         "--quality-profile",
@@ -522,10 +539,13 @@ def main() -> None:
     color_formats = parse_csv_arg(args.color_formats, set(COLOR_FORMAT_SPECS), "color formats")
     sequence_to_asset = load_assets(args.assets_dir)
     max_dimension = args.max_dimension if args.max_dimension is not None else QUALITY_PROFILES[args.quality_profile]
+    file_prefix = args.file_prefix or default_file_prefix(
+        args.file_prefix_base, args.quality_profile, max_dimension
+    )
 
     args.dist_dir.mkdir(parents=True, exist_ok=True)
     args.work_dir.mkdir(parents=True, exist_ok=True)
-    staging_dir = create_staging_dir(args.work_dir, args.file_prefix)
+    staging_dir = create_staging_dir(args.work_dir, file_prefix)
 
     ordered_sequences = sorted(sequence_to_asset)
     groups = chunked(ordered_sequences, args.group_size)
@@ -543,7 +563,7 @@ def main() -> None:
             args.work_dir,
             staging_dir,
             args.family_name,
-            args.file_prefix,
+            file_prefix,
             max_dimension,
             color_formats,
             args.use_pngquant,
@@ -556,7 +576,7 @@ def main() -> None:
     css_path = write_css(
         staging_dir,
         args.family_name,
-        args.file_prefix,
+        file_prefix,
         groups,
         shard_artifacts,
         display_codepoints,
@@ -564,7 +584,7 @@ def main() -> None:
     manifest_path = write_manifest(
         staging_dir,
         args.family_name,
-        args.file_prefix,
+        file_prefix,
         groups,
         ordered_sequences,
         args.version,
@@ -577,12 +597,12 @@ def main() -> None:
     )
     glyphs_path = write_glyphs_js(
         staging_dir,
-        args.file_prefix,
+        file_prefix,
         ordered_sequences,
         official_metadata,
         display_codepoints,
     )
-    publish_outputs(staging_dir, args.dist_dir, args.file_prefix)
+    publish_outputs(staging_dir, args.dist_dir, file_prefix)
     print(f"Wrote {css_path}")
     print(f"Wrote {manifest_path}")
     print(f"Wrote {glyphs_path}")

@@ -20,6 +20,21 @@ def copy_files(files: list[Path], destination: Path) -> None:
         shutil.copy2(path, destination / path.name)
 
 
+def resolve_manifest(dist_dir: Path, manifest: Path | None) -> Path:
+    if manifest is not None:
+        return manifest
+
+    manifests = sorted(dist_dir.glob("*.manifest.json"))
+    if not manifests:
+        raise SystemExit(f"No manifest found in {dist_dir}")
+    if len(manifests) > 1:
+        names = ", ".join(path.name for path in manifests)
+        raise SystemExit(
+            f"Multiple manifests found in {dist_dir}; pass --manifest explicitly. Found: {names}"
+        )
+    return manifests[0]
+
+
 def write_readme(
     destination: Path,
     family_name: str,
@@ -62,48 +77,48 @@ def write_readme(
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dist-dir", type=Path, default=Path("dist"))
-    parser.add_argument("--out-dir", type=Path, default=Path("export/LobeHubFluentEmoji3DFont"))
+    parser.add_argument("--manifest", type=Path, default=None)
+    parser.add_argument("--out-dir", type=Path, default=None)
     parser.add_argument("--zip-name", default=None)
     parser.add_argument("--include-showcase", action="store_true")
     args = parser.parse_args()
 
-    manifest_path = args.dist_dir / "LobeHubFluentEmoji3DFont.manifest.json"
-    if not manifest_path.exists():
-        raise SystemExit(f"Missing manifest: {manifest_path}")
-
+    manifest_path = resolve_manifest(args.dist_dir, args.manifest)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest_dir = manifest_path.parent
     file_prefix = manifest["filePrefix"]
     family_name = manifest["familyName"]
     quality_profile = manifest.get("qualityProfile", "balanced")
     max_dimension = manifest["maxDimension"]
+    out_dir = args.out_dir or Path("export") / file_prefix
 
-    if args.out_dir.exists():
-        shutil.rmtree(args.out_dir)
-    fonts_dir = args.out_dir / "fonts"
+    if out_dir.exists():
+        shutil.rmtree(out_dir)
+    fonts_dir = out_dir / "fonts"
     fonts_dir.mkdir(parents=True, exist_ok=True)
 
     font_files = unique_font_files(manifest)
-    copy_files([args.dist_dir / f"{file_prefix}.css"], fonts_dir)
-    copy_files([args.dist_dir / name for name in font_files], fonts_dir)
+    copy_files([manifest_dir / f"{file_prefix}.css"], fonts_dir)
+    copy_files([manifest_dir / name for name in font_files], fonts_dir)
 
     if args.include_showcase:
         showcase_files = [
             Path("index.html"),
             Path("sample/list/favicon.ico"),
-            args.dist_dir / f"{file_prefix}.glyphs.js",
-            args.dist_dir / f"{file_prefix}.manifest.json",
+            manifest_dir / f"{file_prefix}.glyphs.js",
+            manifest_dir / f"{file_prefix}.manifest.json",
         ]
         for path in showcase_files:
             if path.exists():
                 target_name = path.name if path.name != "favicon.ico" else "favicon.ico"
-                shutil.copy2(path, args.out_dir / target_name)
+                shutil.copy2(path, out_dir / target_name)
 
-    write_readme(args.out_dir, family_name, file_prefix, quality_profile, max_dimension, font_files)
+    write_readme(out_dir, family_name, file_prefix, quality_profile, max_dimension, font_files)
 
-    zip_name = args.zip_name or f"{file_prefix}-{quality_profile}-{max_dimension}px"
-    archive_base = args.out_dir.parent / zip_name
-    shutil.make_archive(str(archive_base), "zip", root_dir=args.out_dir.parent, base_dir=args.out_dir.name)
-    print(f"Wrote {args.out_dir}")
+    zip_name = args.zip_name or file_prefix
+    archive_base = out_dir.parent / zip_name
+    shutil.make_archive(str(archive_base), "zip", root_dir=out_dir.parent, base_dir=out_dir.name)
+    print(f"Wrote {out_dir}")
     print(f"Wrote {archive_base}.zip")
 
 

@@ -12,6 +12,9 @@ DIST_DIR="${DIST_DIR:-dist}"
 COLOR_FORMATS="${COLOR_FORMATS:-cbdt,sbix,svg}"
 USE_PNGQUANT="${USE_PNGQUANT:-0}"
 USE_ZOPFLIPNG="${USE_ZOPFLIPNG:-0}"
+FAMILY_NAME="${FAMILY_NAME:-Fluent Emoji 3D}"
+FILE_PREFIX="${FILE_PREFIX:-}"
+FILE_PREFIX_BASE="${FILE_PREFIX_BASE:-FluentEmoji3D}"
 
 mkdir -p "${WORKDIR}"
 
@@ -57,11 +60,17 @@ BUILD_ARGS=(
   --assets-dir "${ASSETS_DIR}"
   --dist-dir "${DIST_DIR}"
   --work-dir "${WORKDIR}"
+  --family-name "${FAMILY_NAME}"
+  --file-prefix-base "${FILE_PREFIX_BASE}"
   --group-size "${GROUP_SIZE}"
   --quality-profile "${QUALITY_PROFILE}"
   --color-formats "${COLOR_FORMATS}"
   --version "${VERSION}"
 )
+
+if [ -n "${FILE_PREFIX}" ]; then
+  BUILD_ARGS+=(--file-prefix "${FILE_PREFIX}")
+fi
 
 if [ -n "${MAX_DIMENSION}" ]; then
   BUILD_ARGS+=(--max-dimension "${MAX_DIMENSION}")

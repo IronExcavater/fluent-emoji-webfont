@@ -23,14 +23,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: false
+          submodules: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build all quality variants
+        run: |
+          chmod +x ./build_lobehub_3d_font.sh ./build_all_lobehub_3d_fonts.sh ./stage_pages_site.sh
+          ./build_all_lobehub_3d_fonts.sh
 
       - name: Stage site
         run: |
-          mkdir -p _site/fonts _site/sample/list
-          sed 's|\./dist/LobeHub|\./fonts/LobeHub|g' index.html > _site/index.html
-          cp dist/LobeHubFluentEmoji3DFont* _site/fonts/
-          cp sample/list/favicon.ico _site/sample/list/
+          chmod +x ./stage_pages_site.sh
+          ./stage_pages_site.sh _site
 
       - uses: actions/configure-pages@v5
 
