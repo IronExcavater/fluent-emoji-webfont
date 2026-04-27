@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Fluent Emoji 3D</title>
     <link rel="icon" href="./sample/list/favicon.ico" sizes="32x32" />
-    <link rel="stylesheet" href="./dist/balanced/FluentEmoji3D-balanced-128px.css" />
-    <script src="./dist/balanced/FluentEmoji3D-balanced-128px.glyphs.js"></script>
+    <link rel="stylesheet" href="./dist/FluentEmoji3D-balanced-128px.css" />
+    <script src="./dist/FluentEmoji3D-balanced-128px.glyphs.js"></script>
     <style>
       :root {
         color-scheme: dark;
@@ -995,7 +995,7 @@
         let glyphs;
 
         try {
-          const response = await fetch("./dist/balanced/FluentEmoji3D-balanced-128px.manifest.json");
+          const response = await fetch("./dist/FluentEmoji3D-balanced-128px.manifest.json");
           if (!response.ok) {
             throw new Error(`Manifest request failed: ${response.status}`);
           }
@@ -1166,18 +1166,18 @@
           const filePrefix = filePrefixForProfile(state.detailProfile);
           const basePath =
             state.deployMode === "pages"
-              ? `${GITHUB_PAGES_BASE}/fonts/${state.detailProfile}`
+              ? `${GITHUB_PAGES_BASE}/fonts`
               : state.deployMode === "jsdelivr"
-                ? `${JSDELIVR_BASE}/fonts/${state.detailProfile}`
-                : `/fonts/${state.detailProfile}`;
+                ? `${JSDELIVR_BASE}/fonts`
+                : `/fonts`;
           return `<link rel="stylesheet" href="${basePath}/${filePrefix}.css" />\n\n.emoji-text {\n  font-family: "${manifest.familyName}", sans-serif;\n}`;
         }
 
         function buildExportSnippet() {
           const filePrefix = filePrefixForProfile(state.detailProfile);
           const lines = [
-            `QUALITY_PROFILE=${state.detailProfile} DIST_DIR=dist/${state.detailProfile} ./build_lobehub_3d_font.sh`,
-            `./export_lobehub_3d_font.sh dist/${state.detailProfile}/${filePrefix}.manifest.json`,
+            `QUALITY_PROFILE=${state.detailProfile} DIST_DIR=dist ./build_lobehub_3d_font.sh`,
+            `./export_lobehub_3d_font.sh dist/${filePrefix}.manifest.json`,
           ];
           if (state.deployMode === "local") {
             lines.push("./build_all_lobehub_3d_fonts.sh");
@@ -1199,7 +1199,7 @@
             }
           }
 
-          const lines = [`fonts/${state.detailProfile}/`, `  ${filePrefix}.css`, `  ${filePrefix}*.ttf`, ""];
+          const lines = ["fonts/", `  ${filePrefix}.css`, `  ${filePrefix}*.ttf`, ""];
           for (const colorFormat of ["cbdt", "sbix", "svg"]) {
             const count = formatCounts.get(colorFormat);
             if (count) {

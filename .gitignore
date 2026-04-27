@@ -170,7 +170,4 @@ export/FluentEmoji3D-*/
 
 # Generated multi-quality LobeHub 3D outputs
 _site/
-dist/compact/
-dist/balanced/
-dist/detail/
-dist/max/
+dist/FluentEmoji3D-*

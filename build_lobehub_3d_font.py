@@ -6,6 +6,7 @@ import json
 import re
 import shutil
 import subprocess
+import textwrap
 import unicodedata
 from dataclasses import dataclass
 from io import BytesIO
@@ -36,6 +37,7 @@ QUALITY_PROFILES = {
     "detail": 192,
     "max": 256,
 }
+MAPPING_MODES = ("unicode", "pua")
 DISPLAY_PUA_START = 0xE000
 DISPLAY_PUA_END = 0xF8FF
 
@@ -88,11 +90,61 @@ def load_assets(assets_dir: Path) -> dict[tuple[int, ...], Path]:
     return sequence_to_asset
 
 
+def parse_subset_line(raw_line: str) -> tuple[int, ...] | None:
+    line = raw_line.split("#", 1)[0].strip()
+    if not line:
+        return None
+    if re.fullmatch(r"[0-9A-Fa-f][0-9A-Fa-f _-]*", line):
+        return tuple(int(part, 16) for part in re.split(r"[ _-]+", line) if part)
+    return tuple(ord(character) for character in line)
+
+
+def load_subset_sequences(
+    emoji_list_files: tuple[Path, ...],
+    raw_emojis: tuple[str, ...],
+) -> list[tuple[int, ...]]:
+    sequences: list[tuple[int, ...]] = []
+    seen: set[tuple[int, ...]] = set()
+
+    for emoji in raw_emojis:
+        sequence = tuple(ord(character) for character in emoji)
+        if sequence and sequence not in seen:
+            seen.add(sequence)
+            sequences.append(sequence)
+
+    for emoji_list_file in emoji_list_files:
+        for raw_line in emoji_list_file.read_text(encoding="utf-8").splitlines():
+            sequence = parse_subset_line(raw_line)
+            if sequence is None or sequence in seen:
+                continue
+            seen.add(sequence)
+            sequences.append(sequence)
+
+    return sequences
+
+
+def filter_assets(
+    sequence_to_asset: dict[tuple[int, ...], Path],
+    subset_sequences: list[tuple[int, ...]],
+) -> dict[tuple[int, ...], Path]:
+    if not subset_sequences:
+        return sequence_to_asset
+
+    missing = [sequence for sequence in subset_sequences if sequence not in sequence_to_asset]
+    if missing:
+        rendered = ", ".join(emoji_from_sequence(sequence) for sequence in missing[:10])
+        if len(missing) > 10:
+            rendered += ", ..."
+        raise SystemExit(f"Subset contains emojis not present in assets: {rendered}")
+
+    return {sequence: sequence_to_asset[sequence] for sequence in subset_sequences}
+
+
 def clear_existing_outputs(dist_dir: Path, file_prefix: str) -> None:
     for pattern in (f"{file_prefix}*.ttf", f"{file_prefix}*.woff2"):
         for path in dist_dir.glob(pattern):
             path.unlink()
-    for suffix in (".css", ".manifest.json", ".glyphs.js"):
+    for suffix in (".css", ".manifest.json", ".glyphs.js", ".runtime.js", ".runtime.mjs"):
         target = dist_dir / f"{file_prefix}{suffix}"
         if target.exists():
             target.unlink()
@@ -122,8 +174,11 @@ def chunked(values: list[tuple[int, ...]], size: int) -> list[list[tuple[int, ..
 def unicode_range_for_sequences(
     sequences: list[tuple[int, ...]],
     display_codepoints: dict[tuple[int, ...], int] | None = None,
+    include_sequence_codepoints: bool = True,
 ) -> str:
-    codepoints = {codepoint for sequence in sequences for codepoint in sequence}
+    codepoints: set[int] = set()
+    if include_sequence_codepoints:
+        codepoints.update(codepoint for sequence in sequences for codepoint in sequence)
     if display_codepoints:
         codepoints.update(
             display_codepoints[sequence]
@@ -142,6 +197,25 @@ def parse_csv_arg(raw_value: str, valid_values: set[str], label: str) -> tuple[s
     if not values:
         raise SystemExit(f"At least one {label} is required")
     return values
+
+
+def default_group_size(mapping_mode: str) -> int:
+    return 0 if mapping_mode == "unicode" else 128
+
+
+def default_subset_tag(emoji_list_files: tuple[Path, ...], raw_emojis: tuple[str, ...]) -> str | None:
+    if len(emoji_list_files) == 1 and not raw_emojis:
+        return emoji_list_files[0].stem
+    if emoji_list_files or raw_emojis:
+        return "subset"
+    return None
+
+
+def slugify_subset_tag(value: str) -> str:
+    slug = re.sub(r"[^A-Za-z0-9]+", "-", value.strip().lower()).strip("-")
+    if not slug:
+        raise SystemExit("Subset tag must contain at least one letter or digit")
+    return slug
 
 
 def load_png_bytes(webp_path: Path, max_dimension: int) -> bytes:
@@ -173,7 +247,7 @@ def write_wrapped_svgs(
     group: list[tuple[int, ...]],
     sequence_to_asset: dict[tuple[int, ...], Path],
     max_dimension: int,
-    display_codepoints: dict[tuple[int, ...], int],
+    display_codepoints: dict[tuple[int, ...], int] | None = None,
 ) -> list[Path]:
     svg_dir = group_dir / "svg"
     svg_dir.mkdir(parents=True, exist_ok=True)
@@ -185,7 +259,7 @@ def write_wrapped_svgs(
         write_wrapped_svg(sequence_svg_path, encoded_png, max_dimension)
         svg_paths.append(sequence_svg_path)
 
-        display_codepoint = display_codepoints.get(sequence)
+        display_codepoint = None if display_codepoints is None else display_codepoints.get(sequence)
         if display_codepoint is not None:
             display_svg_path = (svg_dir / svg_name_for_sequence((display_codepoint,))).resolve()
             write_wrapped_svg(display_svg_path, encoded_png, max_dimension)
@@ -202,7 +276,7 @@ def build_group_fonts(
     group_index: int,
     total_groups: int,
     sequence_to_asset: dict[tuple[int, ...], Path],
-    display_codepoints: dict[tuple[int, ...], int],
+    display_codepoints: dict[tuple[int, ...], int] | None,
     work_dir: Path,
     dist_dir: Path,
     family_name: str,
@@ -366,13 +440,13 @@ def write_glyphs_js(
     file_prefix: str,
     ordered_sequences: list[tuple[int, ...]],
     official_metadata: dict[tuple[int, ...], dict[str, object]],
-    display_codepoints: dict[tuple[int, ...], int],
+    display_codepoints: dict[tuple[int, ...], int] | None,
 ) -> Path:
     glyphs_path = dist_dir / f"{file_prefix}.glyphs.js"
     glyphs = []
     for sequence in ordered_sequences:
         metadata = metadata_for_sequence(sequence, official_metadata)
-        display_codepoint = display_codepoints.get(sequence)
+        display_codepoint = None if display_codepoints is None else display_codepoints.get(sequence)
         glyphs.append(
             {
                 "emoji": emoji_from_sequence(sequence),
@@ -399,13 +473,303 @@ def write_glyphs_js(
     return glyphs_path
 
 
+def mapper_runtime_source(
+    family_name: str,
+    file_prefix: str,
+    entries: list[dict[str, str]],
+    module: bool,
+) -> str:
+    family_name_json = json.dumps(family_name, ensure_ascii=False)
+    file_prefix_json = json.dumps(file_prefix, ensure_ascii=False)
+    font_family_css_json = json.dumps(f"'{family_name}', sans-serif", ensure_ascii=False)
+    css_file_json = json.dumps(f"{file_prefix}.css", ensure_ascii=False)
+    entries_json = json.dumps(entries, ensure_ascii=False, separators=(",", ":"))
+
+    shared_body = textwrap.dedent(
+        f"""\
+        const familyName = {family_name_json};
+        const filePrefix = {file_prefix_json};
+        const fontFamilyCss = {font_family_css_json};
+        const entries = {entries_json};
+        const rawToDisplay = new Map(entries.map((entry) => [entry.emoji, entry.display]));
+        const displayToRaw = new Map(entries.map((entry) => [entry.display, entry.emoji]));
+        const sortedEntries = entries
+          .slice()
+          .sort((left, right) => right.emoji.length - left.emoji.length || left.emoji.localeCompare(right.emoji));
+        const defaultSelector = '[data-fluent-emoji]';
+        const styleElementId = `fluent-emoji-3d-style-${{filePrefix}}`;
+
+        function escapeRegExp(value) {{
+          return value.replace(/[.*+?^${{}}()|[\\]\\\\]/g, '\\\\$&');
+        }}
+
+        const rawPattern = sortedEntries.length
+          ? new RegExp(sortedEntries.map((entry) => escapeRegExp(entry.emoji)).join('|'), 'gu')
+          : null;
+
+        function mapText(value) {{
+          const text = value == null ? '' : String(value);
+          if (!rawPattern) {{
+            return text;
+          }}
+          return text.replace(rawPattern, (match) => rawToDisplay.get(match) || match);
+        }}
+
+        function unmapText(value) {{
+          const text = value == null ? '' : String(value);
+          return Array.from(text, (character) => displayToRaw.get(character) || character).join('');
+        }}
+
+        function resolveDocument(root) {{
+          if (typeof document === 'undefined') {{
+            return null;
+          }}
+          if (!root) {{
+            return document;
+          }}
+          if (root.nodeType === 9) {{
+            return root;
+          }}
+          return root.ownerDocument || document;
+        }}
+
+        function matchesSelector(node, selector) {{
+          return typeof Element !== 'undefined' && node instanceof Element && node.matches(selector);
+        }}
+
+        function closestMappedElement(node, selector) {{
+          if (typeof Element === 'undefined') {{
+            return null;
+          }}
+          const element = node instanceof Element ? node : node && node.parentElement;
+          return element && element.closest ? element.closest(selector) : null;
+        }}
+
+        function ensureStylesheet(options) {{
+          const root = options && options.root ? options.root : null;
+          const doc = resolveDocument(root);
+          if (!doc) {{
+            return null;
+          }}
+          const href = options && options.href ? options.href : defaultCssHref;
+          if (!href) {{
+            return null;
+          }}
+          const absoluteHref = new URL(href, doc.baseURI).href;
+          const existing = Array.from(doc.querySelectorAll('link[rel="stylesheet"]')).find((link) => link.href === absoluteHref);
+          if (existing) {{
+            return existing;
+          }}
+          const link = doc.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = absoluteHref;
+          link.setAttribute('data-fluent-emoji-file-prefix', filePrefix);
+          (doc.head || doc.documentElement).appendChild(link);
+          return link;
+        }}
+
+        function ensureSelectorStyle(options) {{
+          const selector = options && options.selector ? options.selector : defaultSelector;
+          const root = options && options.root ? options.root : null;
+          const doc = resolveDocument(root);
+          if (!doc) {{
+            return null;
+          }}
+          const css = `${{selector}} {{ font-family: ${{fontFamilyCss}} !important; }}`;
+          let style = doc.getElementById(styleElementId);
+          if (style) {{
+            if (style.textContent !== css) {{
+              style.textContent = css;
+            }}
+            return style;
+          }}
+          style = doc.createElement('style');
+          style.id = styleElementId;
+          style.textContent = css;
+          (doc.head || doc.documentElement).appendChild(style);
+          return style;
+        }}
+
+        function mapElementText(element, rawText) {{
+          const raw = rawText == null ? unmapText(element.textContent ?? '') : String(rawText);
+          element.setAttribute('data-fluent-emoji-raw', raw);
+          element.textContent = mapText(raw);
+          return raw;
+        }}
+
+        function unmapElementText(element) {{
+          const raw = unmapText(element.textContent ?? '');
+          element.removeAttribute('data-fluent-emoji-raw');
+          element.textContent = raw;
+          return raw;
+        }}
+
+        function mapElements(root, options) {{
+          const resolvedRoot = root || (typeof document !== 'undefined' ? document : null);
+          if (!resolvedRoot) {{
+            return;
+          }}
+          const selector = options && options.selector ? options.selector : defaultSelector;
+          if (matchesSelector(resolvedRoot, selector)) {{
+            mapElementText(resolvedRoot);
+          }}
+          if (resolvedRoot.querySelectorAll) {{
+            resolvedRoot.querySelectorAll(selector).forEach((element) => mapElementText(element));
+          }}
+        }}
+
+        function observe(root, options) {{
+          const resolvedRoot = root || (typeof document !== 'undefined' ? (document.body || document.documentElement) : null);
+          if (!resolvedRoot || typeof MutationObserver === 'undefined') {{
+            return null;
+          }}
+          const selector = options && options.selector ? options.selector : defaultSelector;
+          mapElements(resolvedRoot, {{ selector }});
+          const observer = new MutationObserver((records) => {{
+            for (const record of records) {{
+              if (record.type === 'characterData') {{
+                const mapped = closestMappedElement(record.target, selector);
+                if (mapped) {{
+                  mapElementText(mapped);
+                }}
+                continue;
+              }}
+              for (const node of record.addedNodes) {{
+                const mapped = closestMappedElement(node, selector);
+                if (mapped) {{
+                  mapElementText(mapped);
+                }}
+                if (node && node.querySelectorAll) {{
+                  mapElements(node, {{ selector }});
+                }}
+              }}
+            }}
+          }});
+          observer.observe(resolvedRoot, {{ childList: true, subtree: true, characterData: true }});
+          return observer;
+        }}
+
+        function install(options) {{
+          const resolvedOptions = options || {{}};
+          const root = resolvedOptions.root || (typeof document !== 'undefined' ? document : null);
+          ensureStylesheet({{ root, href: resolvedOptions.href }});
+          ensureSelectorStyle({{ root, selector: resolvedOptions.selector }});
+          mapElements(root, {{ selector: resolvedOptions.selector }});
+          if (resolvedOptions.observe === false) {{
+            return null;
+          }}
+          const observeRoot = root && root.nodeType === 9 ? (root.body || root.documentElement) : root;
+          return observe(observeRoot, {{ selector: resolvedOptions.selector }});
+        }}
+
+        const api = {{
+          familyName,
+          filePrefix,
+          entries,
+          defaultCssHref,
+          mapText,
+          unmapText,
+          ensureStylesheet,
+          ensureSelectorStyle,
+          mapElementText,
+          unmapElementText,
+          mapElements,
+          observe,
+          install,
+        }};
+        """
+    )
+
+    if module:
+        header = textwrap.dedent(
+            f"""\
+            const runtimeUrl = new URL(import.meta.url);
+            const defaultCssHref = new URL({css_file_json}, runtimeUrl).href;
+            """
+        )
+        footer = textwrap.dedent(
+            """\
+            export {
+              defaultCssHref,
+              entries,
+              ensureSelectorStyle,
+              ensureStylesheet,
+              familyName,
+              filePrefix,
+              install,
+              mapElementText,
+              mapElements,
+              mapText,
+              observe,
+              unmapElementText,
+              unmapText,
+            };
+
+            export default api;
+            """
+        )
+        return header + "\n" + shared_body + "\n" + footer
+
+    header = textwrap.dedent(
+        f"""\
+        (function (global) {{
+          const runtimeUrl =
+            typeof document !== 'undefined' && document.currentScript && document.currentScript.src
+              ? new URL(document.currentScript.src, document.baseURI)
+              : null;
+          const defaultCssHref = runtimeUrl ? new URL({css_file_json}, runtimeUrl).href : null;
+        """
+    )
+    footer = textwrap.dedent(
+        """\
+          global.FluentEmoji3DMapper = api;
+        })(typeof window !== 'undefined' ? window : globalThis);
+        """
+    )
+    return header + "\n" + textwrap.indent(shared_body, "  ") + "\n" + footer
+
+
+def write_mapper_runtime_files(
+    dist_dir: Path,
+    family_name: str,
+    file_prefix: str,
+    ordered_sequences: list[tuple[int, ...]],
+    display_codepoints: dict[tuple[int, ...], int] | None,
+) -> list[Path]:
+    if not display_codepoints:
+        return []
+
+    entries = [
+        {
+            "emoji": emoji_from_sequence(sequence),
+            "display": chr(display_codepoints[sequence]),
+        }
+        for sequence in ordered_sequences
+        if sequence in display_codepoints
+    ]
+    outputs = [
+        (
+            dist_dir / f"{file_prefix}.runtime.js",
+            mapper_runtime_source(family_name, file_prefix, entries, module=False),
+        ),
+        (
+            dist_dir / f"{file_prefix}.runtime.mjs",
+            mapper_runtime_source(family_name, file_prefix, entries, module=True),
+        ),
+    ]
+    for path, content in outputs:
+        path.write_text(content, encoding="utf-8")
+    return [path for path, _ in outputs]
+
+
 def write_css(
     dist_dir: Path,
     family_name: str,
     file_prefix: str,
     groups: list[list[tuple[int, ...]]],
     shard_artifacts: list[list[dict[str, str]]],
-    display_codepoints: dict[tuple[int, ...], int],
+    mapping_mode: str,
+    display_codepoints: dict[tuple[int, ...], int] | None,
 ) -> Path:
     css_path = dist_dir / f"{file_prefix}.css"
     blocks: list[str] = []
@@ -425,7 +789,15 @@ def write_css(
             ",\n".join(src_lines) + ";",
         ]
         if len(groups) > 1:
-            lines.append(f"  unicode-range: {unicode_range_for_sequences(group, display_codepoints)};")
+            lines.append(
+                "  unicode-range: "
+                + unicode_range_for_sequences(
+                    group,
+                    display_codepoints,
+                    include_sequence_codepoints=(mapping_mode == "unicode"),
+                )
+                + ";"
+            )
         lines.append("}")
         blocks.append("\n".join(lines))
     css_path.write_text("\n\n".join(blocks) + "\n", encoding="utf-8")
@@ -441,10 +813,12 @@ def write_manifest(
     version: str,
     quality_profile: str,
     max_dimension: int,
+    mapping_mode: str,
+    group_size: int,
     color_formats: tuple[str, ...],
     shard_artifacts: list[list[dict[str, str]]],
     official_metadata: dict[tuple[int, ...], dict[str, object]],
-    display_codepoints: dict[tuple[int, ...], int],
+    display_codepoints: dict[tuple[int, ...], int] | None,
 ) -> Path:
     manifest_path = dist_dir / f"{file_prefix}.manifest.json"
     manifest_path.write_text(
@@ -457,12 +831,18 @@ def write_manifest(
                 "groupCount": len(groups),
                 "qualityProfile": quality_profile,
                 "maxDimension": max_dimension,
+                "mappingMode": mapping_mode,
+                "groupSize": group_size,
                 "colorFormats": list(color_formats),
                 "groups": [
                     {
                         "index": index,
                         "count": len(group),
-                        "unicodeRange": unicode_range_for_sequences(group, display_codepoints),
+                        "unicodeRange": unicode_range_for_sequences(
+                            group,
+                            display_codepoints,
+                            include_sequence_codepoints=(mapping_mode == "unicode"),
+                        ),
                         "sources": artifacts,
                     }
                     for index, (group, artifacts) in enumerate(zip(groups, shard_artifacts))
@@ -472,12 +852,12 @@ def write_manifest(
                         "emoji": emoji_from_sequence(sequence),
                         "display": (
                             chr(display_codepoints[sequence])
-                            if sequence in display_codepoints
+                            if display_codepoints is not None and sequence in display_codepoints
                             else emoji_from_sequence(sequence)
                         ),
                         "displayCodepoint": (
                             f"{display_codepoints[sequence]:04X}"
-                            if sequence in display_codepoints
+                            if display_codepoints is not None and sequence in display_codepoints
                             else None
                         ),
                         "name": metadata_for_sequence(sequence, official_metadata)["name"],
@@ -502,7 +882,7 @@ def main() -> None:
     parser.add_argument("--family-name", default="Fluent Emoji 3D")
     parser.add_argument("--file-prefix", default=None)
     parser.add_argument("--file-prefix-base", default="FluentEmoji3D")
-    parser.add_argument("--group-size", type=int, default=128)
+    parser.add_argument("--group-size", type=int, default=None)
     parser.add_argument(
         "--quality-profile",
         choices=tuple(QUALITY_PROFILES),
@@ -511,6 +891,30 @@ def main() -> None:
     )
     parser.add_argument("--max-dimension", type=int, default=None)
     parser.add_argument("--version", default="unknown")
+    parser.add_argument(
+        "--emoji-list-file",
+        type=Path,
+        action="append",
+        default=[],
+        help="Optional text file containing one emoji or codepoint sequence per line to build a subset.",
+    )
+    parser.add_argument(
+        "--emoji",
+        action="append",
+        default=[],
+        help="Optional emoji to include directly in the subset. May be repeated.",
+    )
+    parser.add_argument(
+        "--subset-tag",
+        default=None,
+        help="Optional label inserted into the generated filename prefix for subset builds.",
+    )
+    parser.add_argument(
+        "--mapping-mode",
+        choices=MAPPING_MODES,
+        default="unicode",
+        help="How display glyphs are encoded. 'unicode' uses raw emoji sequences only; 'pua' also emits private-use display glyphs.",
+    )
     parser.add_argument(
         "--use-pngquant",
         action=argparse.BooleanOptionalAction,
@@ -537,10 +941,19 @@ def main() -> None:
     args = parser.parse_args()
 
     color_formats = parse_csv_arg(args.color_formats, set(COLOR_FORMAT_SPECS), "color formats")
+    emoji_list_files = tuple(args.emoji_list_file)
+    raw_emojis = tuple(args.emoji)
     sequence_to_asset = load_assets(args.assets_dir)
+    subset_sequences = load_subset_sequences(emoji_list_files, raw_emojis)
+    sequence_to_asset = filter_assets(sequence_to_asset, subset_sequences)
     max_dimension = args.max_dimension if args.max_dimension is not None else QUALITY_PROFILES[args.quality_profile]
+    group_size = args.group_size if args.group_size is not None else default_group_size(args.mapping_mode)
+    file_prefix_base = args.file_prefix_base
+    subset_tag = args.subset_tag or default_subset_tag(emoji_list_files, raw_emojis)
+    if subset_tag:
+        file_prefix_base = f"{file_prefix_base}-{slugify_subset_tag(subset_tag)}"
     file_prefix = args.file_prefix or default_file_prefix(
-        args.file_prefix_base, args.quality_profile, max_dimension
+        file_prefix_base, args.quality_profile, max_dimension
     )
 
     args.dist_dir.mkdir(parents=True, exist_ok=True)
@@ -548,9 +961,13 @@ def main() -> None:
     staging_dir = create_staging_dir(args.work_dir, file_prefix)
 
     ordered_sequences = sorted(sequence_to_asset)
-    groups = chunked(ordered_sequences, args.group_size)
+    groups = chunked(ordered_sequences, group_size)
     official_metadata = load_official_metadata(args.official_assets_dir)
-    display_codepoints = display_codepoints_for_sequences(ordered_sequences)
+    display_codepoints = (
+        display_codepoints_for_sequences(ordered_sequences)
+        if args.mapping_mode == "pua"
+        else None
+    )
 
     shard_artifacts: list[list[dict[str, str]]] = []
     for index, group in enumerate(groups):
@@ -579,6 +996,7 @@ def main() -> None:
         file_prefix,
         groups,
         shard_artifacts,
+        args.mapping_mode,
         display_codepoints,
     )
     manifest_path = write_manifest(
@@ -590,6 +1008,8 @@ def main() -> None:
         args.version,
         args.quality_profile,
         max_dimension,
+        args.mapping_mode,
+        group_size,
         color_formats,
         shard_artifacts,
         official_metadata,
@@ -602,10 +1022,19 @@ def main() -> None:
         official_metadata,
         display_codepoints,
     )
+    runtime_paths = write_mapper_runtime_files(
+        staging_dir,
+        args.family_name,
+        file_prefix,
+        ordered_sequences,
+        display_codepoints,
+    )
     publish_outputs(staging_dir, args.dist_dir, file_prefix)
     print(f"Wrote {css_path}")
     print(f"Wrote {manifest_path}")
     print(f"Wrote {glyphs_path}")
+    for runtime_path in runtime_paths:
+        print(f"Wrote {runtime_path}")
 
 
 if __name__ == "__main__":

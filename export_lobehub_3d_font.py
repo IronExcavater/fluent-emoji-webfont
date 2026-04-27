@@ -41,7 +41,9 @@ def write_readme(
     file_prefix: str,
     quality_profile: str,
     max_dimension: int,
+    mapping_mode: str,
     font_files: list[str],
+    runtime_files: list[str],
 ) -> None:
     tech_counts: dict[str, int] = {}
     for file_name in font_files:
@@ -52,12 +54,13 @@ def write_readme(
         family_name,
         "",
         f"Detail: {quality_profile} ({max_dimension}px)",
+        f"Encoding: {mapping_mode}",
         "",
         "Files in this package:",
         f"- fonts/{file_prefix}.css",
         f"- fonts/{file_prefix}*.ttf",
         "",
-        "Import:",
+        "CSS import:",
         f'<link rel="stylesheet" href="/fonts/{file_prefix}.css" />',
         "",
         ".emoji-text {",
@@ -66,6 +69,44 @@ def write_readme(
         "",
         "Counts:",
     ]
+    if runtime_files:
+        runtime_js = next((name for name in runtime_files if name.endswith(".runtime.js")), None)
+        runtime_mjs = next((name for name in runtime_files if name.endswith(".runtime.mjs")), None)
+        lines.extend(
+            [
+                "",
+                "Official mapper runtime:",
+                *[f"- fonts/{name}" for name in runtime_files],
+                "",
+                "Browser usage (auto-loads sibling CSS):",
+            ]
+        )
+        if runtime_js is not None:
+            lines.extend(
+                [
+                    f'<script src="/fonts/{runtime_js}"></script>',
+                    "<div data-fluent-emoji>I ❤️ Fluent Emoji 3D</div>",
+                    "<script>",
+                    "  window.FluentEmoji3DMapper.install();",
+                    "</script>",
+                ]
+            )
+        if runtime_mjs is not None:
+            lines.extend(
+                [
+                    "",
+                    "Module usage:",
+                    f"import mapper from '/fonts/{runtime_mjs}';",
+                    "mapper.install();",
+                ]
+            )
+        lines.extend(
+            [
+                "",
+                "Programmatic usage:",
+                "window.FluentEmoji3DMapper.mapText('Hello ❤️');",
+            ]
+        )
     for tech in ("cbdt", "sbix", "svg"):
         count = tech_counts.get(tech)
         if count:
@@ -90,6 +131,7 @@ def main() -> None:
     family_name = manifest["familyName"]
     quality_profile = manifest.get("qualityProfile", "balanced")
     max_dimension = manifest["maxDimension"]
+    mapping_mode = manifest.get("mappingMode", "unicode")
     out_dir = args.out_dir or Path("export") / file_prefix
 
     if out_dir.exists():
@@ -100,6 +142,12 @@ def main() -> None:
     font_files = unique_font_files(manifest)
     copy_files([manifest_dir / f"{file_prefix}.css"], fonts_dir)
     copy_files([manifest_dir / name for name in font_files], fonts_dir)
+    runtime_files: list[str] = []
+    for suffix in (".runtime.js", ".runtime.mjs"):
+        runtime_path = manifest_dir / f"{file_prefix}{suffix}"
+        if runtime_path.exists():
+            copy_files([runtime_path], fonts_dir)
+            runtime_files.append(runtime_path.name)
 
     if args.include_showcase:
         showcase_files = [
@@ -113,7 +161,7 @@ def main() -> None:
                 target_name = path.name if path.name != "favicon.ico" else "favicon.ico"
                 shutil.copy2(path, out_dir / target_name)
 
-    write_readme(out_dir, family_name, file_prefix, quality_profile, max_dimension, font_files)
+    write_readme(out_dir, family_name, file_prefix, quality_profile, max_dimension, mapping_mode, font_files, runtime_files)
 
     zip_name = args.zip_name or file_prefix
     archive_base = out_dir.parent / zip_name
