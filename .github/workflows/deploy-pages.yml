@@ -35,7 +35,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Build all quality variants
+      - name: Build fonts
         run: |
           chmod +x ./build_lobehub_3d_font.sh ./build_all_lobehub_3d_fonts.sh ./stage_pages_site.sh
           ./build_all_lobehub_3d_fonts.sh
