@@ -5,7 +5,7 @@ set -e
 SOURCE="${1:-@lobehub/fluent-emoji-3d}"
 WORKDIR="build/lobehub-3d-font"
 VENV_DIR="${WORKDIR}/venv"
-GROUP_SIZE="${GROUP_SIZE:-128}"
+GROUP_SIZE="${GROUP_SIZE:-}"
 QUALITY_PROFILE="${QUALITY_PROFILE:-balanced}"
 MAX_DIMENSION="${MAX_DIMENSION:-}"
 DIST_DIR="${DIST_DIR:-dist}"
@@ -14,7 +14,18 @@ USE_PNGQUANT="${USE_PNGQUANT:-0}"
 USE_ZOPFLIPNG="${USE_ZOPFLIPNG:-0}"
 FAMILY_NAME="${FAMILY_NAME:-Fluent Emoji 3D}"
 FILE_PREFIX="${FILE_PREFIX:-}"
-FILE_PREFIX_BASE="${FILE_PREFIX_BASE:-FluentEmoji3D}"
+MAPPING_MODE="${MAPPING_MODE:-unicode}"
+
+if [ -z "${FILE_PREFIX_BASE:-}" ]; then
+  if [ "${MAPPING_MODE}" = "pua" ]; then
+    FILE_PREFIX_BASE="FluentEmoji3D-pua"
+  else
+    FILE_PREFIX_BASE="FluentEmoji3D"
+  fi
+fi
+EMOJI_LIST_FILE="${EMOJI_LIST_FILE:-}"
+EMOJI="${EMOJI:-}"
+SUBSET_TAG="${SUBSET_TAG:-}"
 
 mkdir -p "${WORKDIR}"
 
@@ -62,11 +73,31 @@ BUILD_ARGS=(
   --work-dir "${WORKDIR}"
   --family-name "${FAMILY_NAME}"
   --file-prefix-base "${FILE_PREFIX_BASE}"
-  --group-size "${GROUP_SIZE}"
   --quality-profile "${QUALITY_PROFILE}"
+  --mapping-mode "${MAPPING_MODE}"
   --color-formats "${COLOR_FORMATS}"
   --version "${VERSION}"
 )
+
+if [ -n "${GROUP_SIZE}" ]; then
+  BUILD_ARGS+=(--group-size "${GROUP_SIZE}")
+fi
+
+if [ -n "${EMOJI_LIST_FILE}" ]; then
+  BUILD_ARGS+=(--emoji-list-file "${EMOJI_LIST_FILE}")
+fi
+
+if [ -n "${EMOJI}" ]; then
+  while IFS= read -r raw_emoji; do
+    if [ -n "${raw_emoji}" ]; then
+      BUILD_ARGS+=(--emoji "${raw_emoji}")
+    fi
+  done < <(printf '%s\n' "${EMOJI}")
+fi
+
+if [ -n "${SUBSET_TAG}" ]; then
+  BUILD_ARGS+=(--subset-tag "${SUBSET_TAG}")
+fi
 
 if [ -n "${FILE_PREFIX}" ]; then
   BUILD_ARGS+=(--file-prefix "${FILE_PREFIX}")
