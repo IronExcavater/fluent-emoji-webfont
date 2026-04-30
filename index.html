@@ -1502,7 +1502,7 @@
 
           try {
             const fontSpec = `64px "${manifest.familyName}"`;
-            const probes = ["😀", "❤️‍🔥", "#️⃣", "\uE000"];
+            const probes = ["😀", "❤️‍🔥", "#️⃣"];
             await Promise.all(probes.map((probe) => document.fonts.load(fontSpec, probe)));
             await document.fonts.ready;
             state.fontStatus = probes.every((probe) => document.fonts.check(fontSpec, probe)) ? "ready" : "failed";

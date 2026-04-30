@@ -242,6 +242,10 @@ def write_wrapped_svg(svg_path: Path, encoded_png: str, max_dimension: int) -> N
     )
 
 
+def strip_fe0f(sequence: tuple[int, ...]) -> tuple[int, ...]:
+    return tuple(cp for cp in sequence if cp != 0xFE0F)
+
+
 def write_wrapped_svgs(
     group_dir: Path,
     group: list[tuple[int, ...]],
@@ -252,12 +256,26 @@ def write_wrapped_svgs(
     svg_dir = group_dir / "svg"
     svg_dir.mkdir(parents=True, exist_ok=True)
     svg_paths: list[Path] = []
+    written_svg_names: set[str] = set()
+
     for sequence in group:
         png_bytes = load_png_bytes(sequence_to_asset[sequence], max_dimension)
         encoded_png = base64.b64encode(png_bytes).decode("ascii")
         sequence_svg_path = (svg_dir / svg_name_for_sequence(sequence)).resolve()
         write_wrapped_svg(sequence_svg_path, encoded_png, max_dimension)
         svg_paths.append(sequence_svg_path)
+        written_svg_names.add(sequence_svg_path.name)
+
+        # Browsers (HarfBuzz/Chrome) strip FE0F before GSUB lookup, so also emit
+        # a FE0F-free variant so those sequences still resolve to the color glyph.
+        stripped = strip_fe0f(sequence)
+        if stripped != sequence and stripped:
+            stripped_name = svg_name_for_sequence(stripped)
+            if stripped_name not in written_svg_names:
+                stripped_svg_path = (svg_dir / stripped_name).resolve()
+                write_wrapped_svg(stripped_svg_path, encoded_png, max_dimension)
+                svg_paths.append(stripped_svg_path)
+                written_svg_names.add(stripped_name)
 
         display_codepoint = None if display_codepoints is None else display_codepoints.get(sequence)
         if display_codepoint is not None:
